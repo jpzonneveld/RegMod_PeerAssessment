@@ -1,0 +1,88 @@
+---
+title: "Regression Models - "
+author: "Jeroen Zonneveld, June 2015"
+output: pdf_document
+---
+##Executive Summary
+
+*Motor Trend*, an automobile trend magazine is interested in exploring the relationship between a set of variables and miles per gallon (MPG) outcome. In this project, we will analyze the `mtcars` dataset from the 1974 Motor Trend US magazine to answer the following questions:
+
+* Is an automatic or manual transmission better for MPG?   
+*Manual transmissions achieve a higher value of MPG compared to automatic transmission.*
+
+* Quantify the MPG difference between automatic and manual transmissions.   
+*This increase is approximately 1.8 MPG when switching from an automatic transmission to a manual one, with all other variables held constant.*
+
+```{r packages, message = FALSE, warning = FALSE}
+library(caret)
+```
+
+##Exploratory Data Analysis
+
+The data was extracted from the 1974 Motor Trend US magazine, and comprises 11 aspects of automobile design and performance for 32 automobiles (1973-1974 models). For a description of the data set please folow this [link](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html).
+
+```{r data load}
+data(mtcars)
+mtcarsRAW   <- mtcars
+mtcars$am   <- factor(mtcars$am,labels=c("automatic","manual"))
+mtcars$gear <- factor(mtcars$gear)
+mtcars$cyl  <- factor(mtcars$cyl)
+mtcars$carb <- factor(mtcars$carb)
+mtcars$vs   <- factor(mtcars$vs)
+```
+
+To explore the relationship of the variable under study, `mpg`, with the other variables in the dataset, we plot `mpg` against each of the other variables (see appendix, figure 1). We try to find the highly correlated variables (>0.75), so we can excluded them from the model.
+
+```{r correlation}
+mtcarsCorrelation=cor(mtcarsRAW)
+corIndices = findCorrelation(mtcarsCorrelation, cutoff = 0.75); print(corIndices)
+```
+So the variables `cyl`, `disp`, `mpg` and `am` are highly correlated. As we are interested in the effect of `am` on `mpg` they will be part of the model, we will exclude `cyl` and `disp`. We will use the step function for the selection process.
+
+Figure 2 in th appendix shows a first comparison of the effect of the type of transmission (`am`) on the fuel consumption (`mpg`), 
+
+##Regression Model
+First, we build a base regression model that includes all variables as predictors for `mpg`. Next we use the step function to refine our linear model, by selecting the most appropriate variables as predictors, and eliminating those that do not.
+```{r models, results='hide'}
+baseModel <- lm(mpg ~ ., data = mtcars)
+bestModel <- step(baseModel, direction = "both")
+```
+
+As we can see in the summary below, the algorithm has selected `cyl`, `hp`, `wt` and `am` as predictors. To check residuals for normality and homoskedasticity, we plot the residuals (see appendix, figure 3). We see that the residuals are normally distributed and homoskedastic.
+
+```{r modelsResult}
+summary(bestModel)
+```
+
+##Conclusions
+bestModel, has successfully explained more than 84% of the variablilty of the data. The model coefficients provide the following insights:
+
+* Miles per gallon increases by a factor of 1.8 (1.8) with manual transmission.
+* Miles per gallon decreases by a factor of 0.03 (-0.03) as horspower increases.
+* Miles per gallon decreases by a factor of 2.5 (-2.5) for every increase of 1000 lb in  weight.
+* Miles per gallon decreases by a factor of 3.03 (-3.03) for 6 cylinders and by a factor of 2.16 (-2.16) for 8 cylinders.
+* The intercept is at 33.7 mpg.
+
+The overall p-value is very small (1.506 x 10 ^ -10) which means that there is a very small uncertainty for the sign of the coefficients.
+
+
+##Appendix
+
+###Figure 1 - Relationships of the different variables
+
+```{r figure1, echo=FALSE}
+pairs(mpg ~ ., data = mtcars)
+```
+
+###Figure 2 - MPG vs. Transmission Type
+
+```{r figure2, echo=FALSE}
+boxplot(mpg ~ am, data = mtcars, col = (c("red","blue")), ylab = "Miles Per Gallon", xlab = "Transmission Type")
+```
+
+###Figure 3 - Residuals
+
+```{r figure3, echo=FALSE}
+par(mfrow = c(2,2))
+plot(bestModel)
+```
